@@ -137,6 +137,9 @@ export EIGEN_CXXFLAGS := -isystem $(EIGEN_BASE) -DEIGEN_DONT_PARALLELIZE
 export EIGEN_LDFLAGS :=
 export EIGEN_NVCC_CXXFLAGS := --diag-suppress 20014
 
+RMM_BASE := $(EXTERNAL_BASE)/rmm
+RMM_CMAKEFLAGS := -DCMAKE_INSTALL_PREFIX=$(RMM_BASE) -DCMAKE_CXX_FLAGS=-Wno-missing-braces
+
 BOOST_BASE := /usr
 # Minimum required version of Boost, e.g. 1.78.0
 BOOST_MIN_VERSION := 107800
@@ -364,7 +367,7 @@ test_auto: $(TEST_AUTO_TARGETS)
 .PHONY: test_auto $(TEST_AUTO_TARGETS)
 .PHONY: format $(patsubst %,format_%,$(TARGETS_ALL))
 .PHONY: environment print_targets clean distclean dataclean
-.PHONY: external_tbb external_cub external_eigen external_kokkos external_kokkos_clean
+.PHONY: external_tbb external_cub external_eigen external_kokkos external_kokkos_clean external_rmm
 
 environment: env.sh
 env.sh: Makefile
@@ -533,6 +536,25 @@ $(EIGEN_BASE):
 	git clone -b cms/master/82dd3710dac619448f50331c1d6a35da673f764a https://github.com/cms-externals/eigen-git-mirror.git $@
 	# include all Patatrack updates
 	cd $@ && git reset --hard 6294f3471cc18068079ec6af8ceccebe34b40021
+
+# RMM
+external_rmm: $(RMM_BASE)
+
+$(RMM_BASE):
+	$(eval RMM_TMP := $(shell mktemp -d))
+	$(eval RMM_TMP_SRC := $(RMM_TMP)/src)
+	$(eval RMM_TMP_BUILD := $(RMM_TMP)/build)
+	mkdir -p $(RMM_TMP)
+	mkdir -p $(RMM_TMP_SRC)
+	mkdir -p $(RMM_TMP_BUILD)
+	git clone --branch branch-22.08 https://github.com/rapidsai/rmm.git $(RMM_TMP_SRC)
+	cd $(RMM_TMP_BUILD)/ && $(CMAKE) $(RMM_TMP_SRC) $(RMM_CMAKEFLAGS)
+	+$(MAKE) -C $(RMM_TMP_BUILD)
+	+$(MAKE) -C $(RMM_TMP_BUILD) install
+	@rm -rf $(RMM_TMP)
+	$(eval undefine RMM_TMP)
+	$(eval undefine RMM_TMP_SRC)
+	$(eval undefine RMM_TMP_BUILD)
 
 # Boost
 .PHONY: external_boost

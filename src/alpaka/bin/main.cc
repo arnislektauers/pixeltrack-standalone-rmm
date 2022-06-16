@@ -22,6 +22,10 @@
 #include "EventProcessor.h"
 #include "PosixClockGettime.h"
 
+#include <rmm/mr/device/per_device_resource.hpp>
+#include <rmm/mr/device/pool_memory_resource.hpp>
+#include <rmm/mr/device/owning_wrapper.hpp>
+
 namespace {
   void print_help(std::string const& name) {
     std::cout
@@ -214,6 +218,10 @@ int main(int argc, char** argv) {
   }
 #endif
 #ifdef ALPAKA_ACC_GPU_CUDA_PRESENT
+  auto cuda_mr = std::make_shared<rmm::mr::cuda_memory_resource>();
+  auto pool_mr = rmm::mr::make_owning_wrapper<rmm::mr::pool_memory_resource>(cuda_mr);
+  rmm::mr::set_current_device_resource(pool_mr.get());
+
   if (backends.find(Backend::CUDA) != backends.end()) {
     cms::alpakatools::initialise<alpaka_cuda_async::Platform>();
   }
